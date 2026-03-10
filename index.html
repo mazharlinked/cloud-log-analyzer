@@ -13,7 +13,8 @@
 <button onclick="analyze()">Analyze Logs</button>
 
 <div id="loading" style="display:none; margin-bottom:10px;">
-    <span>Analyzing logs... ⏳</span>
+    <span>Analyzing logs... ⏳ </span>
+    <span id="timer">0s</span>
 </div>
 <pre id="result"></pre>
 
@@ -21,7 +22,7 @@
 const severityMap = [
     { keywords: ["502", "502 Bad Gateway", "critical", "failure", "unhealthy"], color: "red" },
     { keywords: ["high CPU", "CPU usage", "memory leak"], color: "orange" },
-    { keywords: ["restart", "slow response"], color: "yellow" }
+    { keywords: ["restart", "slow response"], color: "blue" }
 ];
 
 function highlightSeverity(text) {
@@ -43,23 +44,43 @@ ECS task restarting
 CPU usage 95%`;
 }
 
-// ---- Analyze Logs ----
+// ---- Analyze Logs with timer ----
 async function analyze() {
     const logs = document.getElementById("logs").value;
 
-    const response = await fetch("http://localhost:5000/analyze", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ logs })
-    });
+    // Show loading & reset timer
+    const loadingDiv = document.getElementById("loading");
+    const timerSpan = document.getElementById("timer");
+    loadingDiv.style.display = "block";
+    timerSpan.textContent = "0s";
 
-    const data = await response.json();
+    let seconds = 0;
+    const interval = setInterval(() => {
+        seconds++;
+        timerSpan.textContent = seconds + "s";
+    }, 1000);
 
-    // Highlight severity
-    const formatted = highlightSeverity(data.analysis);
+    try {
+        const response = await fetch("http://localhost:5000/analyze", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ logs })
+        });
 
-    document.getElementById("result").innerHTML =
-        `${formatted}<br><br><strong>Estimated cost:</strong> $${data.estimated_cost_usd}`;
+        const data = await response.json();
+
+        // Highlight severity
+        const formatted = highlightSeverity(data.analysis);
+
+        document.getElementById("result").innerHTML =
+            `${formatted}<br><br><strong>Estimated cost:</strong> $${data.estimated_cost_usd}`;
+    } catch (err) {
+        document.getElementById("result").textContent = "Error: " + err;
+    } finally {
+        // Stop timer & hide loading
+        clearInterval(interval);
+        loadingDiv.style.display = "none";
+    }
 }
 </script>
 
