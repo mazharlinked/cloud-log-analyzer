@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>AI Cloud Log Explainer</title>
+</head>
+<body>
+<h2>AI Cloud Log Explainer</h2>
+
+<textarea id="logs" rows="10" cols="80" placeholder="Paste cloud logs here..."></textarea>
+<br><br>
+
+<button onclick="loadExample()">Load Example Logs</button>
+<button onclick="analyze()">Analyze Logs</button>
+
+<div id="loading" style="display:none; margin-bottom:10px;">
+    <span>Analyzing logs... ⏳</span>
+</div>
+<pre id="result"></pre>
+
+<script>
+const severityMap = [
+    { keywords: ["502", "502 Bad Gateway", "critical", "failure", "unhealthy"], color: "red" },
+    { keywords: ["high CPU", "CPU usage", "memory leak"], color: "orange" },
+    { keywords: ["restart", "slow response"], color: "yellow" }
+];
+
+function highlightSeverity(text) {
+    let highlighted = text;
+    severityMap.forEach(item => {
+        item.keywords.forEach(keyword => {
+            const regex = new RegExp(`(${keyword})`, "gi");
+            highlighted = highlighted.replace(regex, `<span style="color:${item.color}; font-weight:bold;">$1</span>`);
+        });
+    });
+    return highlighted;
+}
+
+// ---- Load Example Logs ----
+function loadExample() {
+    document.getElementById("logs").value =
+`ALB returning 502 errors
+ECS task restarting
+CPU usage 95%`;
+}
+
+// ---- Analyze Logs ----
+async function analyze() {
+    const logs = document.getElementById("logs").value;
+
+    const response = await fetch("http://localhost:5000/analyze", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ logs })
+    });
+
+    const data = await response.json();
+
+    // Highlight severity
+    const formatted = highlightSeverity(data.analysis);
+
+    document.getElementById("result").innerHTML =
+        `${formatted}<br><br><strong>Estimated cost:</strong> $${data.estimated_cost_usd}`;
+}
+</script>
+
+</body>
+</html>
